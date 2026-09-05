@@ -231,25 +231,42 @@ Reconfigured the metric aggregation statistic for `FallbackCount` to **`Sum`** a
 
 Displays the AWS Billing and Cost Management console showing the active `aws:createdBy` Cost Allocation Tag. This verifies that resource-level billing attribution is enabled for tracking AI infrastructure spend across users, workloads, and AWS services.
 
+<img width="1513" height="434" alt="Screenshot_CostAllocationTags_P6" src="https://github.com/user-attachments/assets/274382af-1892-4df2-8a61-1bd69439fb54" />
+
+
 ### 2. Amazon SNS Alerting Topic Configuration
 
 Shows the Amazon SNS topic `genai-alerts-topic` with a confirmed email subscription. This confirms that the central alerting hub is active and ready to deliver budget, anomaly, and operational alarm notifications to the lead engineer.
+
+<img width="1534" height="530" alt="Screenshot_SNS_Topic_P6" src="https://github.com/user-attachments/assets/c75d211a-6e3c-4607-856b-9114676385d6" />
+
 
 ### 3. AWS Monthly Budget Guardrail
 
 Displays the configured AWS Budget `genai-monthly-budget` with a **$10.00 monthly spending limit**. The screenshot verifies both alert thresholds: **80% actual spend** and **100% forecasted spend**, confirming proactive FinOps cost protection.
 
+<img width="1333" height="396" alt="Screenshot_AWS_Budget_P6" src="https://github.com/user-attachments/assets/35b328d9-d5b6-49ba-aced-02b14e6ba0ce" />
+
+
 ### 4. AWS Cost Anomaly Detection Subscription
 
 Shows the active AWS Cost Anomaly Detection subscription attached to the SNS topic. This confirms that machine-learning-based spend anomaly alerts are configured to detect abnormal AWS usage patterns and route immediate notifications through `genai-alerts-topic`.
+
+<img width="1819" height="564" alt="Screenshot_AnomalyDetection_P6" src="https://github.com/user-attachments/assets/cebaed14-7287-4c9b-bfa9-afb44b3359e8" />
 
 ### 5. CloudWatch Operational Metric Alarms
 
 Displays both configured CloudWatch alarms: `genai-high-fallback-rate-alarm` for circuit-breaker fallback spikes and `genai-high-latency-alarm` for model latency degradation. This verifies that operational risk signals are monitored at the metric layer.
 
+
+<img width="1908" height="502" alt="Screenshot_CloudWatch_Alarms_P6" src="https://github.com/user-attachments/assets/798a0fe3-eb94-4682-801a-5da5cae2bcae" />
+
+
 ### 6. CloudWatch Unified Observability Dashboard
 
 Displays the full `GenAI-Global-Observability` CloudWatch dashboard, showing model invocation KPIs, circuit-breaker fallback counts, traffic split by model tier, latency tracking, and Logs Insights output in a single operational command center.
+
+<img width="1919" height="882" alt="Screenshot _CloudWatch_Dashboard_P6" src="https://github.com/user-attachments/assets/1da16406-8482-4526-adb0-ec474f80ad08" />
 
 ---
 
