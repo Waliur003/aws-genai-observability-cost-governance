@@ -68,56 +68,7 @@ Assembles the **`GenAI-Global-Observability`** CloudWatch Dashboard combining re
 
 ## Architecture Diagram
 
-```text
- ┌────────────────────────────────────────────────────────────────────────┐
- │                      AWS Cloud Environment (us-east-1)                 │
- └────────────────────────────────────┬───────────────────────────────────┘
-                                      │
-          ┌───────────────────────────┴───────────────────────────┐
-          ▼                                                       ▼
-┌───────────────────────────────┐               ┌───────────────────────────────────┐
-│     AWS Cost Management       │               │      Amazon CloudWatch Metrics    │
-│  ┌─────────────────────────┐  │               │   Namespace: [GenAIRouter]        │
-│  │   AWS Monthly Budget    │  │               │  ┌─────────────────────────────┐  │
-│  │     ($10.00 Ceiling)    │  │               │  │ Metric: FallbackCount       │  │
-│  └────────────┬────────────┘  │               │  │ Metric: InvocationLatency   │  │
-│               │               │               │  │ Metric: ModelInvocations    │  │
-│  ┌────────────▼────────────┐  │               │  └──────────────┬──────────────┘  │
-│  │  Cost Anomaly Detection │  │               └─────────────────┼─────────────────┘
-│  │    (ML-Based > $2.00)   │  │                                 │
-│  └────────────┬────────────┘  │                                 │
-└───────────────┼───────────────┘                                 │
-                │                                                 │
-                ▼                                                 ▼
-      ┌──────────────────┐                              ┌──────────────────┐
-      │  Budget Breach / │                              │ CloudWatch Metric│
-      │  Anomaly Trigger │                              │      Alarms      │
-      └─────────┬────────┘                              └─────────┬────────┘
-                │                                                 │
-                └─────────────────────────┬───────────────────────┘
-                                          ▼
-                        ┌───────────────────────────────────┐
-                        │         Amazon SNS Topic          │
-                        │        [genai-alerts-topic]       │
-                        └─────────────────┬─────────────────┘
-                                          │
-                                          ▼
-                        ┌───────────────────────────────────┐
-                        │      On-Call Engineer Email       │
-                        │ (Immediate Alert Notification)    │
-                        └───────────────────────────────────┘
-                                          ▲
- ┌────────────────────────────────────────┴─────────────────────────────────┐
- │       Amazon CloudWatch Dashboard: [GenAI-Global-Observability]          │
- │  ┌─────────────────────────────┐       ┌──────────────────────────────┐  │
- │  │ KPI: Total Model Invocations│       │ KPI: Circuit-Breaker Flips   │  │
- │  ├─────────────────────────────┤       ├──────────────────────────────┤  │
- │  │ Line: Traffic Volume / Tier │       │ Line: Latency Tracking (ms)  │  │
- │  ├─────────────────────────────┴───────┴──────────────────────────────┤  │
- │  │ Log Table: Real-Time Warnings, Failovers & Error Log Insights      │  │
- │  └────────────────────────────────────────────────────────────────────┘  │
- └──────────────────────────────────────────────────────────────────────────┘
-```
+
 
 ---
 
@@ -176,6 +127,232 @@ Action: genai-alerts-topic
   * **Traffic Volume by Model Tier:** Side-by-side throughput comparisons for Nova Micro vs. Nova Lite.
   * **Inference Latency by Model Tier (ms):** End-to-end execution latency benchmarking.
 * Integrated a real-time **Logs Table** widget running CloudWatch Logs Insights syntax against `/aws/lambda/genai-router-lambda` to intercept runtime errors, throttling events, and circuit-breaker activations.
+
+---
+
+## Infrastructure as Code (IaC) Architecture
+
+The entire observability, FinOps governance, and alerting platform can be codified and deployed using modular HashiCorp Terraform configuration files:
+
+```text
+terraform-aws-genai-observability/
+├── main.tf                 # AWS provider configuration (us-east-1), version constraints, and log group placeholder
+├── variables.tf            # Parameterized inputs (budget ceiling, anomaly threshold, alert email, region)
+├── terraform.tfvars        # Environment variable values for production operations
+├── sns.tf                  # Centralized Amazon SNS topic, email subscription, and cross-service publish policy
+├── budgets.tf              # AWS Budgets monthly cost monitor with 80% actual and 100% forecasted alerts
+├── anomaly_detection.tf    # AWS Cost Anomaly Monitor (ML-based) and immediate SNS alert subscription
+├── alarms.tf               # CloudWatch metric alarms for circuit-breaker fallback spikes and latency degradation
+├── dashboard.tf            # CloudWatch dashboard (GenAI-Global-Observability) with KPI, time-series, and log query widgets
+└── outputs.tf              # Exported SNS topic ARN, dashboard name, alarm ARNs, and budget identifiers
+```
+
+---
+
+## Detailed File-by-File Technical Breakdown
+
+### `main.tf`
+
+Configures the **AWS Provider** (`~> 5.0`) targeting **`us-east-1`** with global default tags:
+
+```text
+GenAI-Observability-FinOps
+ManagedBy = "Terraform"
+```
+
+Provisions the placeholder **`aws_cloudwatch_log_group`** (`/aws/lambda/genai-router-lambda`) with a **14-day retention** rule to ensure CloudWatch Logs Insights dashboard queries resolve without missing target errors.
+
+### `variables.tf`
+
+Declares typed input variables for configurable parameters:
+
+```text
+aws_region
+environment
+alert_email
+monthly_budget_amount
+anomaly_threshold_amount
+```
+
+Default financial thresholds:
+
+```text
+monthly_budget_amount   = 10.00
+anomaly_threshold_amount = 2.00
+```
+
+### `terraform.tfvars`
+
+Supplies environment-specific values to separate platform configuration from declarative code, setting the active region to **`us-east-1`**, defining production alert destinations, and setting financial thresholds.
+
+### `sns.tf`
+
+Provisions the centralized incident alerting pipeline.
+
+#### `aws_sns_topic`
+
+Creates the centralized SNS topic:
+
+```text
+genai-alerts-topic
+```
+
+This acts as the unified message broker for all platform operational and financial events.
+
+#### `aws_sns_topic_subscription`
+
+Binds the on-call engineer's email endpoint to the topic with automated confirmation handling.
+
+#### `aws_sns_topic_policy`
+
+Attaches an IAM resource-based access policy granting publish permissions:
+
+```text
+sns:Publish
+```
+
+Allowed AWS service principals:
+
+```text
+cloudwatch.amazonaws.com
+budgets.amazonaws.com
+costalerts.amazonaws.com
+```
+
+### `budgets.tf`
+
+Declares **`aws_budgets_budget`** (`genai-monthly-budget`) with a **$10.00 USD monthly ceiling** and binds two automated notification rules.
+
+#### 80% Actual Spend Alert
+
+```text
+Threshold: 80%
+Amount: $8.00
+```
+
+Alerts engineers when accumulated month-to-date charges approach budget boundaries.
+
+#### 100% Forecasted Spend Alert
+
+```text
+Threshold: 100%
+Amount: $10.00
+```
+
+Uses predictive spending trends to notify teams before cost overruns occur.
+
+### `anomaly_detection.tf`
+
+Establishes automated machine-learning spend monitoring.
+
+#### `aws_ce_anomaly_monitor`
+
+Creates the anomaly monitor:
+
+```text
+genai-services-anomaly-monitor
+```
+
+This uses a dimensional monitor targeting individual AWS service usage patterns.
+
+#### `aws_ce_anomaly_subscription`
+
+Creates the anomaly alert subscription:
+
+```text
+genai-anomaly-alert-subscription
+```
+
+It dispatches **IMMEDIATE** alerts to the SNS topic whenever anomalous spend deviation exceeds the **$2.00 absolute threshold**:
+
+```text
+ANOMALY_TOTAL_IMPACT_ABSOLUTE >= 2.0
+```
+
+### `alarms.tf`
+
+Configures automated metric monitoring under the custom **`GenAIRouter`** CloudWatch namespace.
+
+#### `genai-high-fallback-rate-alarm`
+
+Monitors circuit-breaker fallback spikes:
+
+```text
+Metric: FallbackCount
+Statistic: Sum
+Threshold: >= 2
+Period: 1 minute
+```
+
+This detects primary model failures and circuit-breaker activations.
+
+#### `genai-high-latency-alarm`
+
+Tracks model latency degradation:
+
+```text
+Metric: InvocationLatency
+Statistic: Average
+Threshold: > 3000ms
+Period: 1 minute
+ModelId: amazon.nova-lite-v1:0
+```
+
+This detects backend inference degradation.
+
+### `dashboard.tf`
+
+Provisions **`aws_cloudwatch_dashboard`**:
+
+```text
+GenAI-Global-Observability
+```
+
+The dashboard uses `jsonencode()` to construct a five-widget single-pane-of-glass layout.
+
+#### Two Single-Value KPIs
+
+```text
+Total Model Invocations
+Total FallbackCount
+```
+
+#### Two Time-Series Line Charts
+
+```text
+Traffic distribution across model tiers
+Inference latency trends by model
+```
+
+Tracked model tiers:
+
+```text
+amazon.nova-micro-v1:0
+amazon.nova-lite-v1:0
+```
+
+#### One CloudWatch Logs Insights Table
+
+Runs live log analytics queries to filter and surface runtime messages:
+
+```text
+WARN
+ERROR
+fallback
+```
+
+### `outputs.tf`
+
+Exports key operational resource identifiers and ARNs for CLI validation and cross-project integration:
+
+```text
+sns_topic_arn
+cloudwatch_dashboard_name
+fallback_alarm_arn
+latency_alarm_arn
+monthly_budget_name
+anomaly_monitor_arn
+```
 
 ---
 
