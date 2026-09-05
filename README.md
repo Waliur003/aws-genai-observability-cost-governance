@@ -1,5 +1,3 @@
-<img width="1454" height="766" alt="Architecture Diagram" src="https://github.com/user-attachments/assets/c3d88d13-7410-4c19-a73e-53cc704752e7" />
-<img width="1454" height="766" alt="Architecture Diagram" src="https://github.com/user-attachments/assets/b4cfb0ac-554f-4e8b-9467-1924c9615098" />
 # AI Cloud Engineering Project 6: Enterprise Observability, FinOps Cost Governance & Alerting on AWS
 
 ---
